@@ -14,4 +14,5 @@ You need to link against the following libraries:
 * SDL_mixer
 * GL
 * GLU
+
 You will also need to add <folder you downloaded to>/include/ to the Search Directories.
