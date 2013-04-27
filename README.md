@@ -15,4 +15,4 @@ You need to link against the following libraries:
 * GL
 * GLU
 
-You will also need to add <folder you downloaded to>/include/ to the Search Directories.
+You will also need to add download_directory/include/ to the Search Directories.
