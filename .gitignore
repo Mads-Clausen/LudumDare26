@@ -1,0 +1,10 @@
+# Code::Blocks files
+*.layout
+*.depend
+bin/
+obj/
+
+# Compiled files
+*.so
+*.o
+*.a

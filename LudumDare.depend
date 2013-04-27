@@ -1,0 +1,31 @@
+# depslib dependency file v1.0
+1367048586 source:/home/mads/Desktop/LudumDare26/LudumDare/src/Render.cpp
+	"Render.hpp"
+
+1367090756 source:/home/mads/Desktop/LudumDare26/LudumDare/src/main.cpp
+	<iostream>
+	<vector>
+	<time.h>
+	<stdlib.h>
+	<SDL/SDL.h>
+	<SDL/SDL_mixer.h>
+	<SDL/SDL_opengl.h>
+	"Render.hpp"
+	"Player.hpp"
+	"Enemy.hpp"
+	"Timing.hpp"
+	"Projectile.hpp"
+
+1367089195 source:/home/mads/Desktop/LudumDare26/LudumDare/src/Player.cpp
+	"Player.hpp"
+
+1367071809 source:/home/mads/Desktop/LudumDare26/LudumDare/src/Projectile.cpp
+	"Projectile.hpp"
+
+1367063605 source:/home/mads/Desktop/LudumDare26/LudumDare/src/Timing.cpp
+	"Timing.hpp"
+	<SDL/SDL.h>
+
+1367090951 source:/home/mads/Desktop/LudumDare26/LudumDare/src/Enemy.cpp
+	"Enemy.hpp"
+
