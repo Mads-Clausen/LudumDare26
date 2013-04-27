@@ -9,8 +9,9 @@ Compilation
 ===========
 You will have to have valid installs of SDL and SDL_mixer( see http://lazyfoo.net ), and
 to have Code::Blocks installed and configured.
-
 You need to link against the following libraries:
-SDL, SDL_mixer, GL, GLU
-
+* SDL
+* SDL_mixer
+* GL
+* GLU
 You will also need to add <folder you downloaded to>/include/ to the Search Directories.
