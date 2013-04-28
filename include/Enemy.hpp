@@ -7,6 +7,9 @@
 
 #include <SDL/SDL_mixer.h>
 
+#include <stdlib.h>
+#include <time.h>
+
 #include <math.h>
 #define PI 3.14159265
 
@@ -14,25 +17,27 @@
 #include "Projectile.hpp"
 #include "Player.hpp"
 #include "Timer.hpp"
+#include "Particles.hpp"
 
 class Enemy : public Drawable
 {
     private:
-        std::vector<Projectile*> _projectiles;
+        std::vector<Projectile> _projectiles;
         int _x, _y, _w, _h, _health;
         unsigned int _num_projectiles;
         float _rot, _rot_to, _stepx, _stepy, _speed, _tier;
         GLuint _tex;
+        bool _has_tex;
 
         Player *_player;
 
-        timing::Timer _shoot_timer;
+        timing::Timer _shoot_timer, _move_timer;
 
     public:
         Enemy();
         virtual ~Enemy();
 
-        bool init(const char *tex_path);
+        bool init();
 
         void update();
         void render();
@@ -53,6 +58,12 @@ class Enemy : public Drawable
         int get_y() const
         {
             return _y;
+        }
+
+        void set_size(int w, int h)
+        {
+            _w = w;
+            _h = h;
         }
 
         int get_w() const
@@ -77,12 +88,18 @@ class Enemy : public Drawable
 
         void set_tier(float t)
         {
+            _health = (int) (t - 0.5f) + 1;
             _tier = t;
         }
 
         float get_tier() const
         {
             return _tier;
+        }
+
+        std::vector<Projectile>& get_projectiles()
+        {
+            return _projectiles;
         }
 };
 

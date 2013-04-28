@@ -5,32 +5,25 @@
 Player::Player()
 {
     _speed = 0;
+    _tier = 1;
+    _extra_proj_speed = _extra_speed = _num_extra_shots = 0;
     _mouse_control = true;
+    _shoot_wait = 0.27f;
 }
 
 Player::~Player()
 {
-    for(unsigned int i = 0; i < _projectiles.size(); ++i)
-    {
-        delete _projectiles[i];
-    }
+    _projectiles.clear();
 
     Mix_FreeChunk(_shot_sound);
 }
 
 bool Player::init(const char *tex_path)
 {
-    /*
-    _tex = create_gl_surface(tex_path, _w, _h);
-    if(_w == -1 || _h == -1)
-    {
-        printf("Unable to initialise player: failed to load texture.");
-        return false;
-    }
+    _num_extra_shots = 20;
 
-    printf("%i * %i\n", _w, _h);
-    */
-    _w = _h = 24;
+    _w = _h = _init_w = _init_h = 24;
+    _shoot_timer.start();
 
     _shot_sound = Mix_LoadWAV("res/player_shoot_01.wav");
     if(_shot_sound == 0)
@@ -44,49 +37,40 @@ void Player::render()
     glPushMatrix();
         glTranslatef(_x + _w / 2, _y + _h / 2, 0.0f);
         glRotatef(_rot, 0.0f, 0.0f, 1.0f);
+        glColor3f(1.0f, 1.0f, 1.0f);
 
         glBegin(GL_TRIANGLES);
-            glColor3f(255.0f, 255.0f, 255.0f);
             glVertex2i(      0,   -_h);
             glVertex2i( _w / 2,    0);
             glVertex2i(-_w / 2,    0);
         glEnd();
     glPopMatrix();
 
-    /*
-    glBegin(GL_QUADS);
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glVertex2f(temp_x, temp_y);
-        glVertex2f(temp_x + 2, temp_y);
-        glVertex2f(temp_x + 2, temp_y + 2);
-        glVertex2f(temp_x, temp_y + 2);
-    glEnd();
-    //*/
-
     for(unsigned int i = 0; i < _projectiles.size(); ++i)
     {
-        _projectiles[i]->render();
+        _projectiles[i].render();
     }
 }
 
 void Player::update()
 {
+    if(_tier != _old_tier)
+    {
+        _w = _init_w * _tier;
+        _h = _init_h * _tier;
+    }
+
     for(unsigned int i = 0; i < _projectiles.size(); ++i)
     {
-        if(_projectiles.size() != _num_projectiles)
-        {
-            _projectiles[i]->parent_index = i;
-        }
-        _projectiles[i]->update();
+        _projectiles[i].update();
 
-        if(_projectiles[i]->x < 0 || _projectiles[i]->x > _screen->w ||
-           _projectiles[i]->y < 0 || _projectiles[i]->y > _screen->h)
+        if(_projectiles[i].x < 0 || _projectiles[i].x > _screen->w ||
+           _projectiles[i].y < 0 || _projectiles[i].y > _screen->h)
         {
-            delete _projectiles[i];
-            _projectiles.erase(_projectiles.begin() + i);
+            _projectiles.erase(_projectiles.begin() + i--);
 
             for(unsigned int x = i; x < _projectiles.size(); ++x)
-                --(_projectiles[x]->parent_index);
+                --(_projectiles[x].parent_index);
         }
     }
 
@@ -115,6 +99,12 @@ void Player::update()
 
     if(_y - _h / 2 < 0)
         _y = 1 + _h / 2;
+
+    if(_shooting && _shoot_timer.get_ticks() / 1000.0f > _shoot_wait)
+    {
+        this->shoot((float) _cur_mouse_x, (float) _cur_mouse_y);
+        _shoot_timer.start();
+    }
 }
 
 void Player::shoot(float mouse_x, float mouse_y)
@@ -130,19 +120,35 @@ void Player::shoot(float mouse_x, float mouse_y)
 
     // std::cout << "Shooting projectile with direction (" << stepx << ", " << stepy << ")" << std::endl;
 
-    Projectile *p = new Projectile();
-    p->x = (_x + _w / 2);
-    p->y = (_y + _h / 2);
-    p->stepx = stepx;
-    p->stepy = stepy;
-    p->speed = 750;
+    Projectile p;
+    p.x = (_x + _w / 2);
+    p.y = (_y + _h / 2);
+    p.stepx = stepx;
+    p.stepy = stepy;
+    p.speed = 750 / (_tier) + _extra_proj_speed;
 
-    p->col_r = 1.0f - 1.0f / 0.0f;
-    p->col_g = 1.0f - 1.0f / 255;
-    p->col_b = 1.0f - 1.0f / 0.0f;
+    p.col_r = 1.0f - 1.0f / 0.0f;
+    p.col_g = 1.0f - 1.0f / 255;
+    p.col_b = 1.0f - 1.0f / 0.0f;
 
     _projectiles.push_back(p);
-    p->parent_index = _projectiles.size() - 1;
+    p.parent_index = _projectiles.size() - 1;
+
+    if(_num_extra_shots > 0)
+    {
+        Projectile p2(p);
+        p2.x -= 9;
+        p2.y -= 9;
+        _projectiles.push_back(p2);
+        p2.parent_index = _projectiles.size() - 1;
+
+        Projectile p3(p);
+        p3.x += 9;
+        p3.y += 9;
+        _projectiles.push_back(p3);
+        p3.parent_index = _projectiles.size() - 1;
+        --_num_extra_shots;
+    }
 }
 
 void Player::update_rotation(float mouse_x, float mouse_y)
@@ -162,17 +168,41 @@ void Player::update_rotation(float mouse_x, float mouse_y)
     _cur_mouse_y = mouse_y;
 }
 
+void Player::on_mouse_event(SDL_Event *ev)
+{
+    if(ev->type == SDL_MOUSEBUTTONDOWN)
+    {
+        if(ev->button.button == SDL_BUTTON_LEFT)
+        {
+            if(_shoot_timer.get_ticks() / 1000.0f > _shoot_wait)
+            {
+                this->shoot((float) ev->button.x, (float) ev->button.y);
+                _shoot_timer.start();
+            }
+
+            _shooting = true;
+        }
+    }
+    else if(ev->type == SDL_MOUSEBUTTONUP)
+    {
+        if(ev->button.button == SDL_BUTTON_LEFT)
+        {
+            _shooting = false;
+        }
+    }
+}
+
 void Player::on_key_event(SDL_Event *ev)
 {
     if(ev->type == SDL_KEYDOWN)
     {
         if(ev->key.keysym.sym == SDLK_DOWN || ev->key.keysym.sym == SDLK_s)
         {
-            _speed = -300;
+            _speed = -300 + _extra_speed;
         }
         else if(ev->key.keysym.sym == SDLK_UP || ev->key.keysym.sym == SDLK_w)
         {
-            _speed = 300;
+            _speed = 300 + _extra_speed;
         }
     }
     else if(ev->type == SDL_KEYUP)

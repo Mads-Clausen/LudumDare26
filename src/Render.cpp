@@ -8,7 +8,7 @@ GLuint create_gl_surface(const char *tex_path, int &w, int &h)
 {
     GLuint texture;			// This is a handle to our texture object
     SDL_Surface *surface;	// This surface will tell us the details of the image
-    GLenum texture_format;
+    GLenum texture_format = GL_RGB;
     GLint  nOfColors;
 
     if ((surface = SDL_LoadBMP(tex_path))) {

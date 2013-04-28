@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string>
 #include <sstream>
+#include <sys/resource.h>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_mixer.h>
@@ -14,15 +15,18 @@
 #include "Enemy.hpp"
 #include "Timing.hpp"
 #include "Projectile.hpp"
+#include "Particles.hpp"
 
 int S_WIDTH = 800, S_HEIGHT = 600, S_FULL_W = 0, S_FULL_H = 0;
 SDL_Surface *screen;
 SDL_VideoInfo *info;
 
+float current_enemy_tier = 1.0f;
+
 Player player;
 std::vector<Enemy> enemies;
 
-bool running = true;
+bool running = true, ingame = true;
 
 void init_gl()
 {
@@ -39,13 +43,24 @@ void init_gl()
     glLoadIdentity();
 }
 
+timing::Timer spawn_timer;
+int enemy_count = 0;
 void spawn_enemy()
 {
     Enemy en;
-    en.init("");
+    en.init();
     en.set_target_player(&player);
+    en.set_tier(current_enemy_tier);
     en.set_position(rand() % S_WIDTH + 1, rand() % S_HEIGHT + 1);
     enemies.push_back(en);
+
+    ++enemy_count;
+    if(enemy_count > 3)
+    {
+        current_enemy_tier += 0.1f;
+        player.set_tier(player.get_tier() + 0.1f);
+        enemy_count = 0;
+    }
 }
 
 void kill_enemy(int i)
@@ -57,7 +72,7 @@ int main()
 {
     srand(time(0));
 
-    std::cout << "Initialising SDL..." << std::endl;
+    std::cout << "Initialising \x1b[31;1mSDL\x1b[32;0m..." << std::endl;
     if(SDL_Init(SDL_INIT_EVERYTHING) == -1)
     {
         std::cout << "Unable to initialise SDL" << std::endl;
@@ -69,8 +84,8 @@ int main()
     S_FULL_W = info->current_w;
     S_FULL_H = info->current_h;
 
-    std::cout << "Initialising window..." << std::endl;
-    screen = SDL_SetVideoMode(S_WIDTH, S_HEIGHT, 32, SDL_SWSURFACE | SDL_OPENGL);
+    std::cout << "Initialising \x1b[31;1mwindow\x1b[32;0m..." << std::endl;
+    screen = SDL_SetVideoMode(S_WIDTH, S_HEIGHT, 32, SDL_SWSURFACE | SDL_OPENGL | SDL_RESIZABLE);
 
     if(screen == 0)
     {
@@ -80,17 +95,18 @@ int main()
 
     Drawable::_screen = screen;
 
-    std::cout << "Initialising sound module..." << std::endl;
-    if(Mix_OpenAudio( 22050, MIX_DEFAULT_FORMAT, 2, 4096 ) == -1)
+    std::cout << "Initialising \x1b[31;1msound module\x1b[32;0m..." << std::endl;
+    if(Mix_OpenAudio(22050, MIX_DEFAULT_FORMAT, 2, 4096) == -1)
     {
         std::cout << "Unable to initialise SDL_Mixer" << std::endl;
         running = false;
     }
 
-    std::cout << "Initialising OpenGL..." << std::endl;
+    std::cout << "Initialising \x1b[31;1mOpenGL\x1b[32;0m..." << std::endl;
     init_gl();
 
     timing::init();
+    spawn_timer.start();
 
     if(!player.init("res/player_01.bmp"))
     {
@@ -98,13 +114,12 @@ int main()
         running = false;
     }
 
-    spawn_enemy();
-    spawn_enemy();
-    spawn_enemy();
-
     SDL_Event event;
 
-    int cur_mouse_x, cur_mouse_y;
+    spawn_enemy();
+
+    int cur_mouse_x = 0, cur_mouse_y = 0;
+
     while(running)
     {
         timing::update();
@@ -121,10 +136,15 @@ int main()
             {
                 cur_mouse_x = event.motion.x;
                 cur_mouse_y = event.motion.y;
+                player.update_rotation((float) cur_mouse_x, (float) cur_mouse_y);
             }
-            else if(event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT)
+            else if(event.type == SDL_MOUSEBUTTONDOWN)
             {
-                player.shoot((float) event.button.x, (float) event.button.y);
+                if(ingame) player.on_mouse_event(&event);
+            }
+            else if(event.type == SDL_MOUSEBUTTONUP)
+            {
+                if(ingame) player.on_mouse_event(&event);
             }
             else if(event.type == SDL_KEYDOWN)
             {
@@ -134,35 +154,21 @@ int main()
                     std::cout << "Shutting down..." << std::endl;
                     break;
                 }
-                else if(event.key.keysym.sym == SDLK_F11)
-                {
-                    if(screen->flags & SDL_FULLSCREEN)
-                    {
-                        SDL_FreeSurface(screen);
-                        S_WIDTH = 800;
-                        S_HEIGHT = 600;
-                        init_gl();
 
-                        screen = SDL_SetVideoMode(S_WIDTH, S_HEIGHT, 32, SDL_SWSURFACE | SDL_OPENGL);
-                        Drawable::_screen = screen;
-                    }
-                    else
-                    {
-                        SDL_FreeSurface(screen);
-                        S_WIDTH = S_FULL_W;
-                        S_HEIGHT = S_FULL_H;
-                        init_gl();
-
-                        screen = SDL_SetVideoMode(S_WIDTH, S_HEIGHT, 32, SDL_FULLSCREEN | SDL_OPENGL);
-                        Drawable::_screen = screen;
-                    }
-                }
-
-                player.on_key_event(&event);
+                if(ingame) player.on_key_event(&event);
             }
             else if(event.type == SDL_KEYUP)
             {
-                player.on_key_event(&event);
+                if(ingame) player.on_key_event(&event);
+            }
+            else if(event.type == SDL_VIDEORESIZE)
+            {
+                S_WIDTH = event.resize.w;
+                S_HEIGHT = event.resize.h;
+
+                SDL_FreeSurface(screen);
+                screen = SDL_SetVideoMode(S_WIDTH, S_HEIGHT, 32, SDL_SWSURFACE | SDL_OPENGL | SDL_RESIZABLE);
+                init_gl();
             }
         }
 
@@ -171,39 +177,47 @@ int main()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        player.update();
-        player.update_rotation((float) cur_mouse_x, (float) cur_mouse_y);
-
-        // Update shitty collision and stuffs
-        std::vector<Projectile*>& proj = player.get_projectiles();
-        for(unsigned int i = 0; i < enemies.size(); ++i)
+        if(ingame)
         {
-            enemies[i].update();
-            enemies[i].render();
-
-            for(unsigned int x = 0; x < proj.size(); ++x)
+            if(spawn_timer.get_ticks() / 1000.0f > 4.0f / (current_enemy_tier - 0.2))
             {
-                if(enemies[i].check_collision(proj[x])) // weak enemy is deaaaad
-                {
-                    delete proj[x];
-                    proj.erase(proj.begin() + x);
+                spawn_enemy();
+                spawn_timer.start();
+            }
 
-                    if(enemies[i].is_dead())
+            player.update();
+
+            // Update shitty collision and stuffs
+            std::vector<Projectile>& proj = player.get_projectiles();
+            for(unsigned int i = 0; i < enemies.size(); ++i)
+            {
+                enemies[i].update();
+                enemies[i].render();
+
+                for(unsigned int x = 0; x < proj.size(); ++x)
+                {
+                    if(enemies[i].check_collision(&(proj[x]))) // weak enemy is deaaaad
                     {
-                        kill_enemy(i);
-                        spawn_enemy();
-                        break;
+                        proj.erase(proj.begin() + x);
+
+                        if(enemies[i].is_dead())
+                        {
+                            kill_enemy(i);
+                            break;
+                        }
                     }
                 }
             }
+
+            player.render();
         }
 
-        player.render();
-
         std::stringstream ss;
-        ss << "Ludum Dare #26 - FPS:" << timing::get_fps();
+        ss << "Ludum Dare #26 - FPS: " << (int) timing::get_fps();
         SDL_WM_SetCaption(ss.str().c_str(), 0);
 
+        ParticleManager::update();
+        ParticleManager::render();
 
         SDL_GL_SwapBuffers();
     }
