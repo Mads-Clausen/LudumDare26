@@ -80,7 +80,7 @@ void Enemy::render()
         if(!_has_tex)
         {
             glBegin(GL_TRIANGLES);
-                glColor3f(1.0f, 0.0f, 0.0f);
+                glColor4f(1.0f, 0.0f, 0.0f, 1.0f);
                 glVertex2i(      0,   -_h);
                 glVertex2i( _w / 2,    0);
                 glVertex2i(-_w / 2,    0);
@@ -88,7 +88,7 @@ void Enemy::render()
         }
         else
         {
-            glColor3f(1.0f, 1.0f, 1.0f);
+            glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             glBindTexture(GL_TEXTURE_2D, _tex);
             glBegin(GL_QUADS);
                 glTexCoord2i(0, 0);
@@ -189,6 +189,14 @@ void Enemy::update()
             _shoot_timer.start();
         }
     }
+
+    for(unsigned int i = 0; i < _projectiles.size(); ++i)
+    {
+        if(_player->check_collision(&(_projectiles[i])))
+        {
+            _projectiles.erase(_projectiles.begin() + i--);
+        }
+    }
 }
 
 void Enemy::shoot()
@@ -250,6 +258,34 @@ bool Enemy::check_collision(Projectile *p)
         }
         else
         {
+            int r = (((double) rand()) / RAND_MAX) * 10 / _tier / 1.5;
+            // std::cout << "r = " << r << " vs. " << (int) (10 / _tier / 2) << std::endl;
+            if(r == (int) (10 / _tier / 2))
+            {
+                POWERUP_TYPE t = POWERUP_SPEED;
+
+                r = (((double) rand()) / RAND_MAX) * 3;
+                int d;
+                if(r == 1)
+                {
+                    t = POWERUP_PROJECTILE_SPEED;
+                    d = 10;
+                }
+                else if(r == 2)
+                {
+                    t = POWERUP_SPEED;
+                    d = 10;
+                }
+                else
+                {
+                    t = POWERUP_TRIPLESHOT;
+                    d = 20;
+                }
+                Powerup *p = new Powerup(t, _x, _y, 32, 32, d, 4);
+                p->start();
+                PowerupManager::register_powerup(p);
+            }
+
             if(Mix_PlayChannel(-1, _dead_sound, 0) == -1)
             {
                 std::cout << "Unable to play sound: " << Mix_GetError() << std::endl;

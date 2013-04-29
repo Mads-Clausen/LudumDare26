@@ -2,10 +2,13 @@
 
 // float temp_x, temp_y;
 
+Mix_Chunk *_hit_sound_p, *_dead_sound_p;
+
 Player::Player()
 {
     _speed = 0;
     _tier = 1;
+    _health = 10;
     _extra_proj_speed = _extra_speed = _num_extra_shots = 0;
     _mouse_control = true;
     _shoot_wait = 0.27f;
@@ -20,8 +23,7 @@ Player::~Player()
 
 bool Player::init(const char *tex_path)
 {
-    _num_extra_shots = 20;
-
+    _x = _y = 100;
     _w = _h = _init_w = _init_h = 24;
     _shoot_timer.start();
 
@@ -29,15 +31,31 @@ bool Player::init(const char *tex_path)
     if(_shot_sound == 0)
         return false;
 
+    if(_hit_sound_p == 0 || _dead_sound_p == 0)
+    {
+        _dead_sound_p = Mix_LoadWAV("res/player_dead_01.wav");
+        if(_dead_sound_p == 0)
+        {
+            std::cout << "Could not load sound: " << Mix_GetError() << std::endl;
+        }
+
+        _hit_sound_p = Mix_LoadWAV("res/player_hit_01.wav");
+        if(_hit_sound_p == 0)
+        {
+            std::cout << "Could not load sound: " << Mix_GetError() << std::endl;
+        }
+    }
+
     return true;
 }
 
 void Player::render()
 {
     glPushMatrix();
+        glBindTexture(GL_TEXTURE_2D, 0);
         glTranslatef(_x + _w / 2, _y + _h / 2, 0.0f);
         glRotatef(_rot, 0.0f, 0.0f, 1.0f);
-        glColor3f(1.0f, 1.0f, 1.0f);
+        glColor4f(0.0f, 1.0f, 0.0f, 1.0f);
 
         glBegin(GL_TRIANGLES);
             glVertex2i(      0,   -_h);
@@ -100,10 +118,22 @@ void Player::update()
     if(_y - _h / 2 < 0)
         _y = 1 + _h / 2;
 
-    if(_shooting && _shoot_timer.get_ticks() / 1000.0f > _shoot_wait)
+    if(_shooting && _shoot_timer.get_ticks() / 1000.0f > _shoot_wait - _extra_proj_speed)
     {
         this->shoot((float) _cur_mouse_x, (float) _cur_mouse_y);
         _shoot_timer.start();
+    }
+
+    if(_extra_speed > 0 && _spd_pu_timer.get_ticks() / 1000.0f > _spd_pu_time)
+    {
+        _spd_pu_timer.stop();
+        _extra_speed = 0;
+    }
+
+    if(_extra_proj_speed > 0 && _proj_spd_pu_timer.get_ticks() / 1000.0f > _proj_spd_pu_time)
+    {
+        _proj_spd_pu_timer.stop();
+        _extra_proj_speed = 0;
     }
 }
 
@@ -128,8 +158,8 @@ void Player::shoot(float mouse_x, float mouse_y)
     p.speed = 750 / (_tier) + _extra_proj_speed;
 
     p.col_r = 1.0f - 1.0f / 0.0f;
-    p.col_g = 1.0f - 1.0f / 255;
-    p.col_b = 1.0f - 1.0f / 0.0f;
+    p.col_g = 1.0f - 1.0f / 192.0f;
+    p.col_b = 1.0f - 1.0f / 222.0f;
 
     _projectiles.push_back(p);
     p.parent_index = _projectiles.size() - 1;
@@ -216,4 +246,46 @@ void Player::on_key_event(SDL_Event *ev)
             _speed = 0;
         }
     }
+}
+
+bool Player::check_collision(Projectile *p)
+{
+    if(p->x > _x && p->x < _x + _w &&
+       p->y > _y && p->y < _y + _h)
+    {
+        --_health;
+
+        _w -= ((_tier - 1 < 1 ? 2 : (_tier - 1) * 2) + 1);
+        _h -= (_tier + 1);
+
+        if(_w < 16)  _w = 16;
+        if(_h < 16)  _h = 16;
+
+        ParticleSystem *_hit_psys;
+
+        if(_health > 0)
+        {
+            if(Mix_PlayChannel(-1, _hit_sound_p, 0) == -1)
+            {
+                std::cout << "Unable to play sound: " << Mix_GetError() << std::endl;
+            }
+
+            _hit_psys = new ParticleSystem(_x + _w / 2, _y + _h / 2, 10, 0.0001f, (((double) rand()) / RAND_MAX) * 360, 20, 5, 0.0f, 1.0f, 0.0f, 600, 4, true);
+        }
+        else
+        {
+            if(Mix_PlayChannel(-1, _dead_sound_p, 0) == -1)
+            {
+                std::cout << "Unable to play sound: " << Mix_GetError() << std::endl;
+            }
+
+            _hit_psys = new ParticleSystem(_x + _w / 2, _y + _h / 2, 60, 0.0001f, 0, 360, 100, 0.0f, 1.0f, 0.0f, 600, 9, true);
+        }
+        _hit_psys->start();
+        ParticleManager::register_system(_hit_psys);
+
+        return true;
+    }
+
+    return false;
 }

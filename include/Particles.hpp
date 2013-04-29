@@ -2,11 +2,11 @@
 #define PARTICLES_INCLUDED
 
 #include <SDL/SDL_opengl.h>
-#include <time.h>
-#include <stdlib.h>
+#include <ctime>
+#include <cstdlib>
 #include <vector>
 #include <iostream>
-#include <math.h>
+#include <cmath>
 
 #include "Timing.hpp"
 

@@ -10,7 +10,7 @@ void Particle::render()
 
         glPushMatrix();
             glTranslatef(x + w / 2, y + h / 2, 0.0);
-            glColor3f(col_r, col_g, col_b);
+            glColor4f(col_r, col_g, col_b, 1.0f);
             glRotatef(rot, 0.0f, 0.0f, 1.0f);
 
             glBegin(GL_TRIANGLES);
@@ -182,6 +182,9 @@ void ParticleManager::update()
         _reg[i]->update();
 
         if(_reg[i]->is_done())
+        {
+            delete _reg[i];
             _reg.erase(_reg.begin() + i--);
+        }
     }
 }

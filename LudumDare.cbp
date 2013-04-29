@@ -33,12 +33,16 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="include/Enemy.hpp" />
+		<Unit filename="include/Particles.hpp" />
 		<Unit filename="include/Player.hpp" />
+		<Unit filename="include/Powerup.hpp" />
 		<Unit filename="include/Projectile.hpp" />
 		<Unit filename="include/Render.hpp" />
 		<Unit filename="include/Timing.hpp" />
 		<Unit filename="src/Enemy.cpp" />
+		<Unit filename="src/Particles.cpp" />
 		<Unit filename="src/Player.cpp" />
+		<Unit filename="src/Powerup.cpp" />
 		<Unit filename="src/Projectile.cpp" />
 		<Unit filename="src/Render.cpp" />
 		<Unit filename="src/Timing.cpp" />

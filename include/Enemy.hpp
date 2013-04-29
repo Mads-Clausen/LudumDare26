@@ -1,16 +1,16 @@
 #ifndef Enemy_INCLUDED
 #define Enemy_INCLUDED
 
-#include <stdio.h>
+#include <cstdio>
 #include <vector>
 #include <iostream>
 
 #include <SDL/SDL_mixer.h>
 
-#include <stdlib.h>
-#include <time.h>
+#include <cstdlib>
+#include <ctime>
 
-#include <math.h>
+#include <cmath>
 #define PI 3.14159265
 
 #include "Render.hpp"
@@ -18,6 +18,7 @@
 #include "Player.hpp"
 #include "Timer.hpp"
 #include "Particles.hpp"
+#include "Powerup.hpp"
 
 class Enemy : public Drawable
 {
@@ -88,7 +89,7 @@ class Enemy : public Drawable
 
         void set_tier(float t)
         {
-            _health = (int) (t - 0.5f) + 1;
+            _health = (int) (t - 0.5f) + 2;
             _tier = t;
         }
 

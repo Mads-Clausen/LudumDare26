@@ -2,7 +2,7 @@
 
 void Projectile::render()
 {
-    glColor3f(col_r, col_g, col_b);
+    glColor4f(col_r, col_g, col_b, 1.0f);
 
     glBegin(GL_LINES);
         glVertex2f(x, y);
